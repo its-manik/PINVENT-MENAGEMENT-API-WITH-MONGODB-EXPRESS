@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs")
 
 const userSchema = mongoose.Schema({
     name: {
@@ -15,11 +16,11 @@ const userSchema = mongoose.Schema({
             "Please inter a valid email"
         ]
     },
-    passwrod: {
+    password: {
         type: String,
         required: [true, "Please enter a password"],
         minLength: [6, "The Password must be grater then 6 letter"],
-        maxLength: [25, "The Password must be lower then 25 letter"]
+        // maxLength: [25, "The Password must be lower then 25 letter"]
     },
     photo: {
         type: String,
@@ -35,6 +36,17 @@ const userSchema = mongoose.Schema({
         maxLength: [250, "bio must be lower then 250 characters"],
         default: "bio"
     }
+})
+
+userSchema.pre('save', async function(next) {
+    if(!this.isModified("password")){
+        return next()
+    }
+
+    //hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(this.password, salt)
+    this.password = hashedPassword
 })
 
 const User = mongoose.model("User", userSchema);
