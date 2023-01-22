@@ -24,7 +24,7 @@ const verify = asyncHandler(async (req, res, next) => {
 
     } catch (error) {
         res.status(401)
-        throw new Error("someting wrong, please login")
+        throw new Error("you're not authorized, please login")
 
     }
 })
