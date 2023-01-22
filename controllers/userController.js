@@ -1,9 +1,10 @@
 const User = require("../models/userModel");
 const asyncHandler = require("express-async-handler");
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs")
 
 const generateToken = (id) => {
-    return jwt.sign({id}, process.env.JWT_SECRET, {expiresIn: "3d"})
+    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "3d" })
 }
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -32,16 +33,89 @@ const registerUser = asyncHandler(async (req, res) => {
         password
     })
 
+    // GENERATE JWT TOKEN HERE
     const token = generateToken(newUser._id)
+
+    // SEND COOKIE IN BROWSER
+    res.cookie("token", token, {
+        path: "/",
+        httpOnly: true,
+        expires: new Date(Date.now() + 1000 * 86400),
+        sameSite: "none",
+        secure: true
+    })
+
     console.log(newUser._doc, token);
     if (newUser) {
-        res.status(201).json(`Hi ${newUser.name}! your registration successfully done!`)
+        const { name, email, photo, bio, phone } = userExists
+        res.status(200).json({
+            name, email, photo, bio, phone, token, password
+        })
     } else {
         res.status(400).json("invalid user inforamtion")
     }
 
 })
 
+const loginUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        res.status(400).json("please Enter your email and password")
+    }
+
+    //check the user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+        res.status(400).json("User not found")
+    } else {
+        // check is password correct
+        const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordCorrect) {
+            res.status(400).json("Invalid email and password")
+        } else {
+            const { _id, name, email, photo, bio, phone, password } = user
+            // GENERATE JWT TOKEN HERE
+            const token = generateToken(_id)
+
+            // SEND COOKIE IN BROWSER
+            res.cookie("token", token, {
+                path: "/",
+                httpOnly: true,
+                expires: new Date(Date.now() + 1000 * 86400),
+                sameSite: "none",
+                // secure: true
+            })
+            res.status(200).json({
+                _id, name, email, photo, bio, phone, token,
+            })
+        }
+    }
+
+})
+
+const logoutUser = asyncHandler( async (req, res) => {
+        // SEND COOKIE IN BROWSER
+        res.cookie("token", "", {
+            path: "/",
+            httpOnly: true,
+            expires: new Date(0),
+            sameSite: "none",
+            secure: true
+        })
+        res.status(200).json({
+            message: "Logout successfull"
+        })
+})
+
+const getUser = asyncHandler( async (req, res) => {
+    res.send("get user")
+} )
+
 module.exports = {
-    registerUser
+    registerUser,
+    loginUser,
+    logoutUser,
+    getUser
 }
